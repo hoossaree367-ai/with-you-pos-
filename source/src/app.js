@@ -164,12 +164,12 @@ function renderSell(){
   const t=billTotals(S.cart.lines,S.cart.discount);
   const lines=S.cart.lines.length?S.cart.lines.map((l,i)=>`<div class="line ${S.flash===i?'flash':''}"><button class="le" data-act="edit-line" data-i="${i}"><span>${esc(l.name)}</span><small>${esc([l.type,l.sweet,...(l.addons||[]).map(a=>a.name)].filter(Boolean).join(' · '))}</small></button><div class="amt num">${baht(lineTotal(l))}</div><div class="qty"><button data-act="qty" data-i="${i}" data-d="-1" aria-label="ลดจำนวน">−</button><span class="num"><span class="sr">จำนวน </span>${l.qty}<span class="sr"> แก้ว</span></span><button data-act="qty" data-i="${i}" data-d="1" aria-label="เพิ่มจำนวน">+</button></div></div>`).join(''):'<div class="empty">แตะเมนูเพื่อเริ่มบิล</div>';
   const scroll=document.querySelector('.grid')?.scrollTop||0;
-  $('view').innerHTML=`<div class="sell"><section class="menu-side"><div class="cats">${cats().map(c=>`<button class="cat ${c===S.cat?'on':''}" data-act="cat" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div><div class="grid">${grid}</div></section>
+  $('view').innerHTML=`<div class="sell"><section class="menu-side"><div class="cats">${cats().map(c=>`<button class="cat ${c===S.cat?'on':''}" data-act="cat" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div><div class="grid${S.swap?' swap':''}">${grid}</div></section>
   <aside class="bill"><div class="bill-h"><h2>บิลปัจจุบัน</h2><div class="seg">${['ทานที่ร้าน','กลับบ้าน'].map(m=>`<button class="${S.cart.mode===m?'on':''}" data-act="mode" data-v="${m}">${m}</button>`).join('')}</div></div>
   <div class="lines">${lines}</div>
   <div class="bill-f"><div class="row"><span class="muted">รวม</span><span class="num">${baht(t.sub)}</span></div>
   <div class="row"><button class="sbtn" data-act="discount">ส่วนลด</button><span class="num">${t.disc?'−'+baht(t.disc):'—'}</span></div>
-  <div class="row"><span>ยอดชำระ</span><span class="total num">${baht(t.total)}</span></div>
+  <div class="row"><span>ยอดชำระ</span><span class="total num${S.bump?' bump':''}">${baht(t.total)}</span></div>
   <div class="pay"><button class="btn main" data-act="cash" ${S.cart.lines.length?'':'disabled'}>เงินสด</button><button class="btn main" data-act="qr" ${S.cart.lines.length?'':'disabled'}>พร้อมเพย์</button></div>
   ${S.cart.lines.length?'<button class="sbtn danger" data-act="clear">ล้างบิล</button>':''}</div></aside></div>`;
   const g=document.querySelector('.grid');if(g)g.scrollTop=scroll;
@@ -248,7 +248,7 @@ function renderConfig(){
 function renderModal(){
   const m=S.modal;if(!m){$('modal').innerHTML='';return}
   const ae=document.activeElement,inSheet=ae&&ae.closest&&ae.closest('.sheet'),key=inSheet?focusKey(ae):null,fresh=!$('modal').querySelector('.sheet');
-  $('modal').innerHTML='<div class="backdrop" data-act="close-bg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mtitle">'+MODALS[m.type](m)+'</div></div>';
+  $('modal').innerHTML='<div class="backdrop'+(fresh?' enter':'')+'" data-act="close-bg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mtitle">'+MODALS[m.type](m)+'</div></div>';
   const sh=$('modal').querySelector('.sheet'),h=sh.querySelector('h2');if(h){h.id='mtitle';h.tabIndex=-1}
   if(key){const el=sh.querySelector(key);(el||h||sh).focus({preventScroll:true})}else if(fresh||!inSheet){(sh.querySelector('[autofocus]')||h||sh).focus({preventScroll:true})}
   if(m.type==='qr'&&m.payload){const q=qrcode(0,'M');q.addData(m.payload);q.make();$('qrbox').innerHTML=q.createSvgTag({cellSize:6,margin:0,scalable:true})}
@@ -265,7 +265,7 @@ const MODALS={
  qr(m){const t=billTotals(S.cart.lines,S.cart.discount).total;
   if(!m.payload)return `<h2>ยังไม่ได้ใส่เลขพร้อมเพย์</h2><p>ใส่เบอร์หรือเลขพร้อมเพย์ของร้านที่แท็บตั้งค่าก่อน ระบบจึงจะสร้าง QR รับเงินได้</p><div class="pay"><button class="btn" data-act="close">ปิด</button><button class="btn main" data-act="go-config">ไปที่ตั้งค่า</button></div>`;
   return `<h2 class="center">สแกนจ่ายพร้อมเพย์</h2><div class="qr" id="qrbox"></div><div class="big num center">${baht(t)}</div><p class="muted center">ปิดการขายหลังเห็นเงินเข้าบัญชีหรือตรวจสลิปแล้ว ระบบไม่ได้ตรวจยอดโอนให้</p><div class="pay"><button class="btn" data-act="close">ยกเลิก</button><button class="btn main" data-act="pay-qr">ได้รับเงินแล้ว</button></div>`},
- done(m){const s=m.sale;return `<h2 class="center">ปิดการขาย บิล #${s.no}</h2>${s.pay==='เงินสด'?`<div class="center"><div class="muted">เงินทอน</div><div class="big num">${baht(s.change)}</div></div>`:`<div class="center"><div class="muted">รับผ่านพร้อมเพย์</div><div class="big num">${baht(s.total)}</div></div>`}<div class="pay"><button class="btn" data-act="print" data-id="${s.id}">พิมพ์บิล</button><button class="btn main" data-act="close">บิลใหม่</button></div>`},
+ done(m){const s=m.sale;return `<svg class="chk" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="31"/><path d="M22 37l10 10 18-20"/></svg><h2 class="center">ปิดการขาย บิล #${s.no}</h2>${s.pay==='เงินสด'?`<div class="center"><div class="muted">เงินทอน</div><div class="big num">${baht(s.change)}</div></div>`:`<div class="center"><div class="muted">รับผ่านพร้อมเพย์</div><div class="big num">${baht(s.total)}</div></div>`}<div class="pay"><button class="btn" data-act="print" data-id="${s.id}">พิมพ์บิล</button><button class="btn main" data-act="close">บิลใหม่</button></div>`},
  void(m){return `<h2>ยกเลิกบิล #${m.sale.no}?</h2><p>ยอด ${baht(m.sale.total)} จะถูกตัดออกจากยอดขาย แต่บิลยังแสดงในรายการพร้อมป้ายยกเลิกแล้ว</p><div class="pay"><button class="btn" data-act="close">ไม่ยกเลิก</button><button class="btn danger" data-act="void-ok">ยกเลิกบิล</button></div>`},
  clear(){return `<h2>ล้างบิลปัจจุบัน?</h2><div class="pay"><button class="btn" data-act="close">เก็บไว้</button><button class="btn danger" data-act="clear-ok">ล้างบิล</button></div>`},
  editMenu(m){const it=m.item;return `<h2>${it.id?'แก้ไขเมนู':'เพิ่มเมนู'}</h2><form id="mf" class="fields" style="display:grid">
@@ -305,7 +305,7 @@ function addLine(it,type,sweet,addonNames,qty=1){
   const line={mid:it.id,name:it.name,cat:it.cat||'อื่น ๆ',type:type==='ราคาเดียว'?'':type,price:it.prices[type],sweet:it.sweet?sweet:'',addons:ad,qty};
   const k=JSON.stringify([line.mid,line.type,line.sweet,ad]);
   const same=S.cart.lines.find(l=>JSON.stringify([l.mid,l.type,l.sweet,l.addons])===k);
-  if(same)same.qty+=qty;else S.cart.lines.push(line);saveCart();S.flash=S.cart.lines.indexOf(same||line);clearTimeout(addLine.t);addLine.t=setTimeout(()=>{S.flash=null;document.querySelectorAll('.line.flash').forEach(e=>e.classList.remove('flash'))},700);
+  if(same)same.qty+=qty;else S.cart.lines.push(line);saveCart();S.flash=S.cart.lines.indexOf(same||line);S.bump=true;setTimeout(()=>{S.bump=false},0);clearTimeout(addLine.t);addLine.t=setTimeout(()=>{S.flash=null;document.querySelectorAll('.line.flash').forEach(e=>e.classList.remove('flash'))},700);
 }
 function dailyText(){const days=rangeDays(S.range,S.viewDay),r=summary(days);return `สรุปยอดขาย ${S.config.name} ${rangeLabel(S.range,S.viewDay)}\nจำนวน ${r.cups} แก้ว\nยอดขาย ${baht(r.total)} จาก ${r.ok.length} บิล\nเงินสด ${baht(r.cash)}\nพร้อมเพย์ ${baht(r.qr)}\n`+r.itemList.slice(0,5).map(([n,x])=>`${n} ${x.qty}`).join('\n')}
 
@@ -314,7 +314,7 @@ const ACT={
  theme(){const t=THEMES[themeMode()].next;applyTheme(t);toast('ใช้ธีม'+THEMES[t].label+(t==='auto'?' ตามการตั้งค่าของเครื่อง':''))},
  tab(d){S.tab=d.v;S.modal=null;if(d.v==='sales')loadRange();else render()},
  range(d){S.range=d.v;loadRange()},
- 'open-day'(d){S.range='day';S.viewDay=d.v;loadRange()},cat(d){S.cat=d.v;renderSell()},mode(d){S.cart.mode=d.v;saveCart();renderSell()},
+ 'open-day'(d){S.range='day';S.viewDay=d.v;loadRange()},cat(d){if(S.cat!==d.v){S.cat=d.v;S.swap=true;renderSell();S.swap=false;const g=document.querySelector('.grid');if(g)g.scrollTop=0}},mode(d){S.cart.mode=d.v;saveCart();renderSell()},
  pick(d){const it=S.menu.find(m=>m.id===d.id);if(!it||it.soldOut)return;const types=Object.keys(it.prices);
   if(!it.sweet&&types.length===1){addLine(it,types[0],'',[]);renderSell();return}
   openModal({type:'pick',item:it,type2:types.includes('เย็น')?'เย็น':types[0],sweet:SWEET[0],addons:[]})},

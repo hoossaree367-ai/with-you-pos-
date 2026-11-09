@@ -225,6 +225,26 @@ button{cursor:pointer;touch-action:manipulation;background:none;border:0;padding
 .themebtn{display:inline-flex;align-items:center;gap:6px;padding:0 12px;font:500 14px var(--body)}
 .themebtn svg{width:20px;height:20px;flex:none}
 @media (max-width:720px){.themebtn .tl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}}
+/* Motion: four short, functional moments. Off when the device asks for reduced motion. */
+.chk{width:72px;height:72px;justify-self:center;display:block}
+.chk circle{fill:none;stroke:var(--leaf);stroke-width:4}
+.chk path{fill:none;stroke:var(--leaf);stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+@media (prefers-reduced-motion:no-preference){
+ .grid.swap>*{animation:pos-fadein .16s ease-out both}
+ .grid.swap>:nth-child(2){animation-delay:.02s}.grid.swap>:nth-child(3){animation-delay:.04s}.grid.swap>:nth-child(4){animation-delay:.06s}.grid.swap>:nth-child(5){animation-delay:.08s}.grid.swap>:nth-child(n+6){animation-delay:.1s}
+ .line.flash{animation:pos-slidein .18s ease-out}
+ .total.bump{display:inline-block;animation:pos-bump .2s ease-out}
+ .backdrop.enter{animation:pos-fade .15s ease-out}
+ .backdrop.enter .sheet{animation:pos-up .18s cubic-bezier(.2,.8,.3,1)}
+ .chk circle{stroke-dasharray:200;stroke-dashoffset:200;animation:pos-draw .35s ease-out forwards}
+ .chk path{stroke-dasharray:60;stroke-dashoffset:60;animation:pos-draw .25s .3s ease-out forwards}
+}
+@keyframes pos-fadein{from{opacity:0;transform:translateY(6px)}}
+@keyframes pos-slidein{from{transform:translateX(16px);opacity:0}}
+@keyframes pos-bump{40%{transform:scale(1.08)}}
+@keyframes pos-fade{from{opacity:0}}
+@keyframes pos-up{from{transform:translateY(24px);opacity:0}}
+@keyframes pos-draw{to{stroke-dashoffset:0}}
 #print{display:none}
 @media print{@page{margin:0}
  html,body{height:auto;background:#fff;color:#000;padding:0}
