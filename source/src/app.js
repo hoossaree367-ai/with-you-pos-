@@ -117,12 +117,14 @@ function start(){
   listenToday();flush();render();
 }
 function stop(){unsubs.forEach(u=>u());unsubs=[];if(listenToday.u){listenToday.u();listenToday.u=null}S.db=null}
+function setInvalid(on){['l-email','l-pw'].forEach(id=>{const e=$(id);if(on){e.setAttribute('aria-invalid','true');e.setAttribute('aria-describedby','loginerr')}else{e.removeAttribute('aria-invalid');e.removeAttribute('aria-describedby')}})}
 function boot(){
+  ['l-email','l-pw'].forEach(id=>$(id).addEventListener('input',()=>{setInvalid(false);$('loginerr').textContent=''}));
   addEventListener('online',flush);addEventListener('offline',()=>{S.stale=true;renderChrome()});
   setInterval(()=>{if(!S.db)return;if(dayKey()!==S.todayKey){const was=S.viewDay===S.todayKey;listenToday();if(was)S.viewDay=S.todayKey}if(S.queue.length)flush()},30000);
   onUser(u=>{S.user=u;$('splash').hidden=true;$('login').hidden=!!u;document.querySelector('.app').hidden=!u;if(u){S.tab='sell';start()}else{stop();S.modal=null;$('modal').innerHTML=''}});
   $('loginform').addEventListener('submit',async e=>{e.preventDefault();e.stopPropagation();const b=$('loginbtn'),er=$('loginerr');b.disabled=true;b.classList.add('busy');b.textContent='กำลังเข้าสู่ระบบ';er.textContent='';
-    try{await login($('l-email').value.trim(),$('l-pw').value);$('l-pw').value=''}catch(x){er.textContent=x.code==='auth/network-request-failed'?'เชื่อมต่ออินเทอร์เน็ตไม่ได้ ตรวจเน็ตแล้วลองอีกครั้ง':x.code==='auth/too-many-requests'?'ลองผิดหลายครั้งเกินไป รอสักครู่แล้วลองใหม่':'อีเมลหรือรหัสผ่านไม่ถูกต้อง'}
+    try{await login($('l-email').value.trim(),$('l-pw').value);$('l-pw').value='';setInvalid(false)}catch(x){setInvalid(x.code!=='auth/network-request-failed'&&x.code!=='auth/too-many-requests');er.textContent=x.code==='auth/network-request-failed'?'เชื่อมต่ออินเทอร์เน็ตไม่ได้ ตรวจเน็ตแล้วลองอีกครั้ง':x.code==='auth/too-many-requests'?'ลองผิดหลายครั้งเกินไป รอสักครู่แล้วลองใหม่':'อีเมลหรือรหัสผ่านไม่ถูกต้อง'}
     b.disabled=false;b.classList.remove('busy');b.textContent='เข้าสู่ระบบ'});
 }
 
@@ -149,10 +151,10 @@ function renderSell(){
   };
   let grid;
   if(!list.length)grid=`<div class="empty" style="grid-column:1/-1">${S.menuLoaded?'<div>ยังไม่มีเมนู เพิ่มเมนูแรกแล้วเริ่มขายได้เลย</div><div class="chips"><button class="btn main" data-act="edit-menu">เพิ่มเมนู</button><button class="btn" data-act="starter">นำเข้าเมนู WITH YOU 43 รายการ</button></div>':'<div>กำลังโหลดเมนู</div>'}</div>`;
-  else if(S.cat==='ทั้งหมด')grid=cats().slice(1).map(c=>`<h3 class="gh">${esc(c)}</h3>`+list.filter(m=>(m.cat||'อื่น ๆ')===c).map(tile).join('')).join('');
+  else if(S.cat==='ทั้งหมด')grid=cats().slice(1).map(c=>`<h2 class="gh">${esc(c)}</h2>`+list.filter(m=>(m.cat||'อื่น ๆ')===c).map(tile).join('')).join('');
   else grid=list.map(tile).join('');
   const t=billTotals(S.cart.lines,S.cart.discount);
-  const lines=S.cart.lines.length?S.cart.lines.map((l,i)=>`<div class="line ${S.flash===i?'flash':''}"><button class="le" data-act="edit-line" data-i="${i}"><span>${esc(l.name)}</span><small>${esc([l.type,l.sweet,...(l.addons||[]).map(a=>a.name)].filter(Boolean).join(' · '))}</small></button><div class="amt num">${baht(lineTotal(l))}</div><div class="qty"><button data-act="qty" data-i="${i}" data-d="-1" aria-label="ลดจำนวน">−</button><span class="num">${l.qty}</span><button data-act="qty" data-i="${i}" data-d="1" aria-label="เพิ่มจำนวน">+</button></div></div>`).join(''):'<div class="empty">แตะเมนูเพื่อเริ่มบิล</div>';
+  const lines=S.cart.lines.length?S.cart.lines.map((l,i)=>`<div class="line ${S.flash===i?'flash':''}"><button class="le" data-act="edit-line" data-i="${i}"><span>${esc(l.name)}</span><small>${esc([l.type,l.sweet,...(l.addons||[]).map(a=>a.name)].filter(Boolean).join(' · '))}</small></button><div class="amt num">${baht(lineTotal(l))}</div><div class="qty"><button data-act="qty" data-i="${i}" data-d="-1" aria-label="ลดจำนวน">−</button><span class="num"><span class="sr">จำนวน </span>${l.qty}<span class="sr"> แก้ว</span></span><button data-act="qty" data-i="${i}" data-d="1" aria-label="เพิ่มจำนวน">+</button></div></div>`).join(''):'<div class="empty">แตะเมนูเพื่อเริ่มบิล</div>';
   const scroll=document.querySelector('.grid')?.scrollTop||0;
   $('view').innerHTML=`<div class="sell"><section class="menu-side"><div class="cats">${cats().map(c=>`<button class="cat ${c===S.cat?'on':''}" data-act="cat" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div><div class="grid">${grid}</div></section>
   <aside class="bill"><div class="bill-h"><h2>บิลปัจจุบัน</h2><div class="seg">${['ทานที่ร้าน','กลับบ้าน'].map(m=>`<button class="${S.cart.mode===m?'on':''}" data-act="mode" data-v="${m}">${m}</button>`).join('')}</div></div>
@@ -194,8 +196,8 @@ function renderSales(){
   const maxC=Math.max(1,...days.map(x=>r.perDay[x].cups));
   const dayNum=k=>+k.split('-')[2];
   const chart=R==='day'
-   ?`<section class="panel"><h3>ยอดรายชั่วโมง</h3><div class="muted">สูงสุด <span class="num">${r.ok.length?baht(maxH):'—'}</span></div><div class="bars">${range.map(h=>`<div style="height:${(r.hours[h]||0)/maxH*100}%" title="${h}:00 ${baht(r.hours[h]||0)}"></div>`).join('')}</div><div class="axis num">${range.map(h=>`<span>${h%2===0?h:''}</span>`).join('')}</div></section>`
-   :`<section class="panel"><h3>จำนวนแก้วรายวัน</h3><div class="muted">สูงสุด <span class="num">${r.cups?maxC+' แก้ว':'—'}</span></div><div class="bars">${days.map(x=>`<div style="height:${r.perDay[x].cups/maxC*100}%" title="${thaiDay(x)} ${r.perDay[x].cups} แก้ว"></div>`).join('')}</div><div class="axis num">${days.map((x,i)=>`<span>${R==='week'||i%3===0?dayNum(x):''}</span>`).join('')}</div></section>`;
+   ?`<section class="panel"><h3>ยอดรายชั่วโมง</h3><div class="muted">สูงสุด <span class="num">${r.ok.length?baht(maxH):'—'}</span></div><div class="bars" role="img" aria-label="${esc('ยอดรายชั่วโมง '+(range.filter(h=>r.hours[h]).map(h=>h+' นาฬิกา '+baht(r.hours[h])).join(', ')||'ยังไม่มีการขาย'))}">${range.map(h=>`<div style="height:${(r.hours[h]||0)/maxH*100}%" title="${h}:00 ${baht(r.hours[h]||0)}"></div>`).join('')}</div><div class="axis num">${range.map(h=>`<span>${h%2===0?h:''}</span>`).join('')}</div></section>`
+   :`<section class="panel"><h3>จำนวนแก้วรายวัน</h3><div class="muted">สูงสุด <span class="num">${r.cups?maxC+' แก้ว':'—'}</span></div><div class="bars" role="img" aria-label="${esc('จำนวนแก้วรายวัน '+(days.filter(x=>r.perDay[x].cups).map(x=>thaiDay(x)+' '+r.perDay[x].cups+' แก้ว').join(', ')||'ยังไม่มีการขาย'))}">${days.map(x=>`<div style="height:${r.perDay[x].cups/maxC*100}%" title="${thaiDay(x)} ${r.perDay[x].cups} แก้ว"></div>`).join('')}</div><div class="axis num">${days.map((x,i)=>`<span>${R==='week'||i%3===0?dayNum(x):''}</span>`).join('')}</div></section>`;
   const maxCat=Math.max(1,...r.catList.map(x=>x[1].qty));
   const cats=r.catList.length?`<div class="catbars">${r.catList.map(([n,c])=>`<span class="cn">${esc(n)}</span><div class="ct"><div style="width:${c.qty/maxCat*100}%"></div></div><span class="num">${c.qty} ${c.cup?'แก้ว':'ชิ้น'}</span><span class="num">${baht(c.amt)}</span>`).join('')}</div>`:'<div class="muted">ยังไม่มีการขายในช่วงนี้</div>';
   const fr=r.itemList.some(x=>x[1].frappe),ot=r.itemList.some(x=>x[1].other);
@@ -237,7 +239,10 @@ function renderConfig(){
 }
 function renderModal(){
   const m=S.modal;if(!m){$('modal').innerHTML='';return}
-  $('modal').innerHTML='<div class="backdrop" data-act="close-bg"><div class="sheet" role="dialog" aria-modal="true">'+MODALS[m.type](m)+'</div></div>';
+  const ae=document.activeElement,inSheet=ae&&ae.closest&&ae.closest('.sheet'),key=inSheet?focusKey(ae):null,fresh=!$('modal').querySelector('.sheet');
+  $('modal').innerHTML='<div class="backdrop" data-act="close-bg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mtitle">'+MODALS[m.type](m)+'</div></div>';
+  const sh=$('modal').querySelector('.sheet'),h=sh.querySelector('h2');if(h){h.id='mtitle';h.tabIndex=-1}
+  if(key){const el=sh.querySelector(key);(el||h||sh).focus({preventScroll:true})}else if(fresh||!inSheet){(sh.querySelector('[autofocus]')||h||sh).focus({preventScroll:true})}
   if(m.type==='qr'&&m.payload){const q=qrcode(0,'M');q.addData(m.payload);q.make();$('qrbox').innerHTML=q.createSvgTag({cellSize:6,margin:0,scalable:true})}
 }
 const keypad=()=>`<div class="keys">${[1,2,3,4,5,6,7,8,9].map(k=>`<button data-act="key" data-k="${k}">${k}</button>`).join('')}<button data-act="key" data-k="C">C</button><button data-act="key" data-k="0">0</button><button data-act="key" data-k="B" aria-label="ลบ">⌫</button></div>`;
@@ -266,8 +271,21 @@ const MODALS={
 function printBill(s){if(!s)return;
   $('print').innerHTML=`<h1>${esc(S.config.name)}</h1><p>บิล #${s.no} · ${esc(s.mode||'')}<br>${new Date(s.ts).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'})}</p><hr>`+s.lines.map(l=>`<div class="pl"><span>${l.qty} ${esc(l.name)}</span><span>${lineTotal(l)}</span></div><small>${esc([l.type,l.sweet,...(l.addons||[]).map(a=>a.name)].filter(Boolean).join(' · '))}</small>`).join('')+`<hr>${s.discount?`<div class="pl"><span>ส่วนลด</span><span>-${s.discount}</span></div>`:''}<div class="pl tot"><span>รวม</span><span>${s.total} บาท</span></div><div class="pl"><span>${esc(s.pay)}</span><span>${s.pay==='เงินสด'?s.received:s.total}</span></div>${s.pay==='เงินสด'?`<div class="pl"><span>เงินทอน</span><span>${s.change}</span></div>`:''}<p class="thx">ขอบคุณครับ/ค่ะ</p>`;
   window.print()}
-function openModal(m){S.modal=m;renderModal()}
-function closeModal(){S.modal=null;render()}
+function focusKey(el){const d=el.dataset||{};if(!d.act)return el.id?'#'+CSS.escape(el.id):null;return '[data-act="'+d.act+'"]'+['v','k','i','id','t','d'].filter(x=>d[x]!=null).map(x=>'[data-'+x+'="'+CSS.escape(d[x])+'"]').join('')}
+function openModal(m){if(!S.modal){const a=document.activeElement;S.opener=a&&a!==document.body?focusKey(a):null}S.modal=m;renderModal()}
+function closeModal(){S.modal=null;render();const k=S.opener;S.opener=null;if(k){const el=document.querySelector(k);if(el)el.focus({preventScroll:true})}}
+document.addEventListener('keydown',e=>{
+  const sh=document.querySelector('#modal .sheet');
+  if(sh){
+    if(e.key==='Escape'){e.preventDefault();closeModal();return}
+    if(e.key==='Tab'){const f=[...sh.querySelectorAll('button:not([disabled]),input,textarea,select,[tabindex]:not([tabindex="-1"])')].filter(x=>x.offsetParent);if(!f.length)return;
+      const i=f.indexOf(document.activeElement);if(e.shiftKey&&(i<=0)){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&(i===-1||i===f.length-1)){e.preventDefault();f[0].focus()}}
+    return}
+  const t=e.target;if(t.classList&&t.classList.contains('tab')&&(e.key==='ArrowRight'||e.key==='ArrowLeft')){const ts=[...document.querySelectorAll('.tab')];const n=ts[(ts.indexOf(t)+(e.key==='ArrowRight'?1:-1)+ts.length)%ts.length];n.click();const nn=document.querySelector('.tab[data-v="'+n.dataset.v+'"]');nn&&nn.focus()}
+});
+// 8: expose selected state of toggle-style buttons to assistive tech
+new MutationObserver(()=>{document.querySelectorAll('.cat,.seg button,.sheet .chip[data-act^="m-"]').forEach(b=>{const v=String(b.classList.contains('on'));if(b.getAttribute('aria-pressed')!==v)b.setAttribute('aria-pressed',v)});
+  document.querySelectorAll('.tab').forEach(t=>{const v=t.getAttribute('aria-selected')==='true'?'0':'-1';if(t.getAttribute('tabindex')!==v)t.setAttribute('tabindex',v)})}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','aria-selected']});
 function finish(pay,extra){
   const t=billTotals(S.cart.lines,S.cart.discount),day=dayKey();
   const no=salesOf(day).reduce((a,s)=>Math.max(a,s.no||0),0)+1;
