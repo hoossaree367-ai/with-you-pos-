@@ -13,6 +13,7 @@ function promptpayPayload(target,amount){
   const body=tlv('00','01')+tlv('01',amount>0?'12':'11')+tlv('29',tlv('00','A000000677010111')+acc)+tlv('53','764')+(amount>0?tlv('54',Number(amount).toFixed(2)):'')+tlv('58','TH')+'6304';
   return body+crc16(body);
 }
+function cashChoices(t){const s=new Set();[20,50,100,500,1000].forEach(n=>{const v=Math.ceil(t/n)*n;if(v>t)s.add(v)});[100,500,1000].forEach(v=>{if(v>t)s.add(v)});return [...s].sort((a,b)=>a-b).slice(0,4)}
 function lineTotal(l){return (l.price+(l.addons||[]).reduce((a,x)=>a+x.price,0))*l.qty}
 function billTotals(lines,discount){const sub=lines.reduce((a,l)=>a+lineTotal(l),0);const disc=Math.min(Math.max(0,discount||0),sub);return {sub,disc,total:sub-disc}}
 function parseAddons(t){return String(t||'').split('\n').map(s=>{const m=s.match(/^\s*(.+?)\s*[,，]\s*(\d+)\s*$/);return m?{name:m[1],price:+m[2]}:null}).filter(Boolean)}
@@ -140,19 +141,27 @@ function priceLabel(p){return Object.entries(p).map(([k,v])=>k==='ราคา�
 function cats(){return ['ทั้งหมด',...new Set(S.menu.map(m=>m.cat||'อื่น ๆ'))]}
 function renderSell(){
   const list=S.menu.filter(m=>S.cat==='ทั้งหมด'||m.cat===S.cat);
-  const grid=list.length?list.map(m=>`<button class="tile ${m.soldOut?'out':''}" data-act="pick" data-id="${esc(m.id)}"><b>${esc(m.name)}</b>${m.soldOut?'<span><span class="pill">หมด</span></span>':'<span class="pr">'+priceLabel(m.prices)+'</span>'}</button>`).join(''):
-   `<div class="empty" style="grid-column:1/-1">${S.menuLoaded?'<div>ยังไม่มีเมนู เพิ่มเมนูแรกแล้วเริ่มขายได้เลย</div><div class="chips"><button class="btn main" data-act="edit-menu">เพิ่มเมนู</button><button class="btn" data-act="starter">นำเข้าเมนู WITH YOU 43 รายการ</button></div>':'<div>กำลังโหลดเมนู</div>'}</div>`;
+  const tile=m=>{
+    if(m.soldOut)return `<div class="tile out"><span class="tn">${esc(m.name)}</span><span class="pill">หมด</span></div>`;
+    const ps=Object.entries(m.prices);
+    if(ps.length===1&&ps[0][0]==='ราคาเดียว')return `<button class="tile one" data-act="quick" data-id="${esc(m.id)}" data-t="ราคาเดียว"><span class="tn">${esc(m.name)}</span><span class="pb num">${ps[0][1]}</span></button>`;
+    return `<div class="tile"><button class="tn" data-act="pick" data-id="${esc(m.id)}" aria-label="${esc(m.name)} เลือกความหวาน">${esc(m.name)}<span class="more" aria-hidden="true">⋯</span></button><div class="pbs">${ps.map(([k,v])=>`<button class="pb" data-act="quick" data-id="${esc(m.id)}" data-t="${k}" aria-label="${esc(m.name)} ${k} ${v} บาท"><span>${k}</span> <b class="num">${v}</b></button>`).join('')}</div></div>`;
+  };
+  let grid;
+  if(!list.length)grid=`<div class="empty" style="grid-column:1/-1">${S.menuLoaded?'<div>ยังไม่มีเมนู เพิ่มเมนูแรกแล้วเริ่มขายได้เลย</div><div class="chips"><button class="btn main" data-act="edit-menu">เพิ่มเมนู</button><button class="btn" data-act="starter">นำเข้าเมนู WITH YOU 43 รายการ</button></div>':'<div>กำลังโหลดเมนู</div>'}</div>`;
+  else if(S.cat==='ทั้งหมด')grid=cats().slice(1).map(c=>`<h3 class="gh">${esc(c)}</h3>`+list.filter(m=>(m.cat||'อื่น ๆ')===c).map(tile).join('')).join('');
+  else grid=list.map(tile).join('');
   const t=billTotals(S.cart.lines,S.cart.discount);
-  const lines=S.cart.lines.length?S.cart.lines.map((l,i)=>`<div class="line"><div>${esc(l.name)}</div><div class="amt num">${baht(lineTotal(l))}</div><small>${esc([l.type,l.sweet,...(l.addons||[]).map(a=>a.name)].filter(Boolean).join(' · '))}</small><div class="qty"><button data-act="qty" data-i="${i}" data-d="-1" aria-label="ลดจำนวน">−</button><span class="num">${l.qty}</span><button data-act="qty" data-i="${i}" data-d="1" aria-label="เพิ่มจำนวน">+</button></div></div>`).join(''):'<div class="empty">แตะเมนูเพื่อเริ่มบิล</div>';
+  const lines=S.cart.lines.length?S.cart.lines.map((l,i)=>`<div class="line ${S.flash===i?'flash':''}"><button class="le" data-act="edit-line" data-i="${i}"><span>${esc(l.name)}</span><small>${esc([l.type,l.sweet,...(l.addons||[]).map(a=>a.name)].filter(Boolean).join(' · '))}</small></button><div class="amt num">${baht(lineTotal(l))}</div><div class="qty"><button data-act="qty" data-i="${i}" data-d="-1" aria-label="ลดจำนวน">−</button><span class="num">${l.qty}</span><button data-act="qty" data-i="${i}" data-d="1" aria-label="เพิ่มจำนวน">+</button></div></div>`).join(''):'<div class="empty">แตะเมนูเพื่อเริ่มบิล</div>';
   const scroll=document.querySelector('.grid')?.scrollTop||0;
   $('view').innerHTML=`<div class="sell"><section class="menu-side"><div class="cats">${cats().map(c=>`<button class="cat ${c===S.cat?'on':''}" data-act="cat" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div><div class="grid">${grid}</div></section>
   <aside class="bill"><div class="bill-h"><h2>บิลปัจจุบัน</h2><div class="seg">${['ทานที่ร้าน','กลับบ้าน'].map(m=>`<button class="${S.cart.mode===m?'on':''}" data-act="mode" data-v="${m}">${m}</button>`).join('')}</div></div>
   <div class="lines">${lines}</div>
   <div class="bill-f"><div class="row"><span class="muted">รวม</span><span class="num">${baht(t.sub)}</span></div>
-  <div class="row"><button class="link" data-act="discount">ส่วนลด</button><span class="num">${t.disc?'−'+baht(t.disc):'—'}</span></div>
+  <div class="row"><button class="sbtn" data-act="discount">ส่วนลด</button><span class="num">${t.disc?'−'+baht(t.disc):'—'}</span></div>
   <div class="row"><span>ยอดชำระ</span><span class="total num">${baht(t.total)}</span></div>
   <div class="pay"><button class="btn main" data-act="cash" ${S.cart.lines.length?'':'disabled'}>เงินสด</button><button class="btn main" data-act="qr" ${S.cart.lines.length?'':'disabled'}>พร้อมเพย์</button></div>
-  ${S.cart.lines.length?'<div class="center"><button class="link danger" data-act="clear">ล้างบิล</button></div>':''}</div></aside></div>`;
+  ${S.cart.lines.length?'<button class="sbtn danger" data-act="clear">ล้างบิล</button>':''}</div></aside></div>`;
   const g=document.querySelector('.grid');if(g)g.scrollTop=scroll;
 }
 function isCup(l){return l.type==='ร้อน'||l.type==='เย็น'||l.type==='ปั่น'}
@@ -237,9 +246,9 @@ const MODALS={
   ${Object.keys(it.prices).length>1?`<div class="opt"><span>แบบ</span><div class="chips">${Object.entries(it.prices).map(([k,v])=>`<button class="chip ${m.type2===k?'on':''}" data-act="m-type" data-v="${k}">${k} <span class="num">${v}</span></button>`).join('')}</div></div>`:''}
   ${it.sweet?`<div class="opt"><span>ความหวาน</span><div class="chips">${SWEET.map(k=>`<button class="chip ${m.sweet===k?'on':''}" data-act="m-sweet" data-v="${k}">${k}</button>`).join('')}</div></div>`:''}
   ${ad.length?`<div class="opt"><span>เพิ่มเติม</span><div class="chips">${ad.map(a=>`<button class="chip ${m.addons.includes(a.name)?'on':''}" data-act="m-addon" data-v="${esc(a.name)}">${esc(a.name)} <span class="num">+${a.price}</span></button>`).join('')}</div></div>`:''}
-  <div class="pay"><button class="btn" data-act="close">ยกเลิก</button><button class="btn main" data-act="m-add">เพิ่มลงบิล</button></div>`},
+  <div class="pay"><button class="btn" data-act="close">ยกเลิก</button><button class="btn main" data-act="m-add">${m.edit!=null?'บันทึกการแก้ไข':'เพิ่มลงบิล'}</button></div>`},
  discount(m){return `<h2>ส่วนลด</h2><div class="big num center">${baht(+m.buf||0)}</div>${keypad()}<div class="pay"><button class="btn" data-act="close">ยกเลิก</button><button class="btn main" data-act="disc-ok">ใช้ส่วนลด</button></div>`},
- cash(m){const t=billTotals(S.cart.lines,S.cart.discount).total,got=+m.buf||0,ch=got-t;return `<h2>รับเงินสด</h2><div class="row"><span>ยอดชำระ</span><span class="total num">${baht(t)}</span></div><div class="row"><span>รับมา</span><span class="total num">${baht(got)}</span></div><div class="chips"><button class="chip num" data-act="set-buf" data-v="${t}">พอดี</button>${[20,50,100,500,1000].filter(x=>x>=t).slice(0,4).map(x=>`<button class="chip num" data-act="set-buf" data-v="${x}">${x}</button>`).join('')}</div>${keypad()}<div class="row"><span>เงินทอน</span><span class="total num" style="color:var(--leaf)">${ch>=0?baht(ch):'—'}</span></div><div class="pay"><button class="btn" data-act="close">ยกเลิก</button><button class="btn main" data-act="pay-cash" ${ch<0?'disabled':''}>ปิดการขาย</button></div>`},
+ cash(m){const t=billTotals(S.cart.lines,S.cart.discount).total,got=+m.buf||0,ch=got-t;return `<h2>รับเงินสด</h2><div class="row"><span>ยอดชำระ</span><span class="total num">${baht(t)}</span></div><div class="row"><span>รับมา</span><span class="total num">${baht(got)}</span></div><div class="chips"><button class="chip num" data-act="set-buf" data-v="${t}">พอดี</button>${cashChoices(t).map(x=>`<button class="chip num" data-act="set-buf" data-v="${x}">${x.toLocaleString('en-US')}</button>`).join('')}</div>${keypad()}<div class="row"><span>เงินทอน</span><span class="total num" style="color:var(--leaf)">${got?(ch>=0?baht(ch):'—'):baht(0)}</span></div>${got&&ch<0?`<p class="hint warn">รับมายังไม่พอ ขาดอีก ${baht(-ch)}</p>`:got?'':'<p class="hint">ไม่ใส่ยอดรับ ระบบจะถือว่ารับมาพอดี</p>'}<div class="pay"><button class="btn" data-act="close">ยกเลิก</button><button class="btn main" data-act="pay-cash" ${got&&ch<0?'disabled':''}>ปิดการขาย</button></div>`},
  qr(m){const t=billTotals(S.cart.lines,S.cart.discount).total;
   if(!m.payload)return `<h2>ยังไม่ได้ใส่เลขพร้อมเพย์</h2><p>ใส่เบอร์หรือเลขพร้อมเพย์ของร้านที่แท็บตั้งค่าก่อน ระบบจึงจะสร้าง QR รับเงินได้</p><div class="pay"><button class="btn" data-act="close">ปิด</button><button class="btn main" data-act="go-config">ไปที่ตั้งค่า</button></div>`;
   return `<h2 class="center">สแกนจ่ายพร้อมเพย์</h2><div class="qr" id="qrbox"></div><div class="big num center">${baht(t)}</div><p class="muted center">ปิดการขายหลังเห็นเงินเข้าบัญชีหรือตรวจสลิปแล้ว ระบบไม่ได้ตรวจยอดโอนให้</p><div class="pay"><button class="btn" data-act="close">ยกเลิก</button><button class="btn main" data-act="pay-qr">ได้รับเงินแล้ว</button></div>`},
@@ -265,12 +274,12 @@ function finish(pay,extra){
   const sale={id:'b'+Date.now()+Math.random().toString(36).slice(2,6),day,no,ts:Date.now(),lines:S.cart.lines,mode:S.cart.mode,sub:t.sub,discount:t.disc,total:t.total,pay,...extra};
   writeSale(sale);S.cart={lines:[],discount:0,mode:S.cart.mode};saveCart();S.modal={type:'done',sale};render();
 }
-function addLine(it,type,sweet,addonNames){
+function addLine(it,type,sweet,addonNames,qty=1){
   const ad=parseAddons(S.config.addons).filter(a=>addonNames.includes(a.name));
-  const line={mid:it.id,name:it.name,cat:it.cat||'อื่น ๆ',type:type==='ราคาเดียว'?'':type,price:it.prices[type],sweet:it.sweet?sweet:'',addons:ad,qty:1};
+  const line={mid:it.id,name:it.name,cat:it.cat||'อื่น ๆ',type:type==='ราคาเดียว'?'':type,price:it.prices[type],sweet:it.sweet?sweet:'',addons:ad,qty};
   const k=JSON.stringify([line.mid,line.type,line.sweet,ad]);
   const same=S.cart.lines.find(l=>JSON.stringify([l.mid,l.type,l.sweet,l.addons])===k);
-  if(same)same.qty++;else S.cart.lines.push(line);saveCart();
+  if(same)same.qty+=qty;else S.cart.lines.push(line);saveCart();S.flash=S.cart.lines.indexOf(same||line);clearTimeout(addLine.t);addLine.t=setTimeout(()=>{S.flash=null;document.querySelectorAll('.line.flash').forEach(e=>e.classList.remove('flash'))},700);
 }
 function dailyText(){const days=rangeDays(S.range,S.viewDay),r=summary(days);return `สรุปยอดขาย ${S.config.name} ${rangeLabel(S.range,S.viewDay)}\nจำนวน ${r.cups} แก้ว\nยอดขาย ${baht(r.total)} จาก ${r.ok.length} บิล\nเงินสด ${baht(r.cash)}\nพร้อมเพย์ ${baht(r.qr)}\n`+r.itemList.slice(0,5).map(([n,x])=>`${n} ${x.qty}`).join('\n')}
 
@@ -284,7 +293,10 @@ const ACT={
   openModal({type:'pick',item:it,type2:types.includes('เย็น')?'เย็น':types[0],sweet:SWEET[0],addons:[]})},
  'm-type'(d){S.modal.type2=d.v;renderModal()},'m-sweet'(d){S.modal.sweet=d.v;renderModal()},
  'm-addon'(d){const a=S.modal.addons,i=a.indexOf(d.v);i>=0?a.splice(i,1):a.push(d.v);renderModal()},
- 'm-add'(){const m=S.modal;addLine(m.item,m.type2,m.sweet,m.addons);closeModal()},
+ 'm-add'(){const m=S.modal;let q=1;if(m.edit!=null){q=S.cart.lines[m.edit].qty;S.cart.lines.splice(m.edit,1)}addLine(m.item,m.type2,m.sweet,m.addons,q);closeModal()},
+ quick(d){const it=S.menu.find(m=>m.id===d.id);if(!it||it.soldOut||it.prices[d.t]==null)return;addLine(it,d.t,it.sweet?SWEET[0]:'',[]);renderSell()},
+ 'edit-line'(d){const l=S.cart.lines[+d.i];const it=S.menu.find(m=>m.id===l.mid)||{id:l.mid,name:l.name,cat:l.cat,prices:{[l.type||'ราคาเดียว']:l.price},sweet:!!l.sweet};
+  openModal({type:'pick',item:it,edit:+d.i,type2:l.type||'ราคาเดียว',sweet:l.sweet||SWEET[0],addons:(l.addons||[]).map(a=>a.name)})},
  qty(d){const l=S.cart.lines[+d.i];l.qty+=+d.d;if(l.qty<=0)S.cart.lines.splice(+d.i,1);saveCart();renderSell()},
  clear(){openModal({type:'clear'})},'clear-ok'(){S.cart.lines=[];S.cart.discount=0;saveCart();closeModal()},
  discount(){openModal({type:'discount',buf:S.cart.discount?String(S.cart.discount):''})},
@@ -293,7 +305,7 @@ const ACT={
  qr(){const t=billTotals(S.cart.lines,S.cart.discount).total;openModal({type:'qr',payload:promptpayPayload(S.config.promptpay,t)})},
  key(d){const m=S.modal;if(d.k==='C')m.buf='';else if(d.k==='B')m.buf=(m.buf||'').slice(0,-1);else if((m.buf||'').length<6)m.buf=(m.buf||'')+d.k;renderModal()},
  'set-buf'(d){S.modal.buf=d.v;renderModal()},
- 'pay-cash'(){const t=billTotals(S.cart.lines,S.cart.discount).total,g=+S.modal.buf||0;finish('เงินสด',{received:g,change:g-t})},
+ 'pay-cash'(){const t=billTotals(S.cart.lines,S.cart.discount).total,g=+S.modal.buf||t;if(g<t)return;finish('เงินสด',{received:g,change:g-t})},
  'pay-qr'(){finish('พร้อมเพย์',{})},
  close(){closeModal()},'close-bg'(d,e){if(e.target.classList.contains('backdrop')&&S.modal.type!=='done')closeModal();else if(e.target.classList.contains('backdrop'))closeModal()},
  'go-config'(){S.modal=null;S.tab='config';render()},
