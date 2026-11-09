@@ -121,9 +121,9 @@ function boot(){
   addEventListener('online',flush);addEventListener('offline',()=>{S.stale=true;renderChrome()});
   setInterval(()=>{if(!S.db)return;if(dayKey()!==S.todayKey){const was=S.viewDay===S.todayKey;listenToday();if(was)S.viewDay=S.todayKey}if(S.queue.length)flush()},30000);
   onUser(u=>{S.user=u;$('splash').hidden=true;$('login').hidden=!!u;document.querySelector('.app').hidden=!u;if(u){S.tab='sell';start()}else{stop();S.modal=null;$('modal').innerHTML=''}});
-  $('loginform').addEventListener('submit',async e=>{e.preventDefault();e.stopPropagation();const b=$('loginbtn'),er=$('loginerr');b.disabled=true;er.textContent='';
+  $('loginform').addEventListener('submit',async e=>{e.preventDefault();e.stopPropagation();const b=$('loginbtn'),er=$('loginerr');b.disabled=true;b.classList.add('busy');b.textContent='กำลังเข้าสู่ระบบ';er.textContent='';
     try{await login($('l-email').value.trim(),$('l-pw').value);$('l-pw').value=''}catch(x){er.textContent=x.code==='auth/network-request-failed'?'เชื่อมต่ออินเทอร์เน็ตไม่ได้ ตรวจเน็ตแล้วลองอีกครั้ง':x.code==='auth/too-many-requests'?'ลองผิดหลายครั้งเกินไป รอสักครู่แล้วลองใหม่':'อีเมลหรือรหัสผ่านไม่ถูกต้อง'}
-    b.disabled=false});
+    b.disabled=false;b.classList.remove('busy');b.textContent='เข้าสู่ระบบ'});
 }
 
 /* ---------- render ---------- */
