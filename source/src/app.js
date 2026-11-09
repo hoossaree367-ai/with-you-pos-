@@ -144,7 +144,7 @@ function renderSell(){
   const tile=m=>{
     if(m.soldOut)return `<div class="tile out"><span class="tn">${esc(m.name)}</span><span class="pill">หมด</span></div>`;
     const ps=Object.entries(m.prices);
-    if(ps.length===1&&ps[0][0]==='ราคาเดียว')return `<button class="tile one" data-act="quick" data-id="${esc(m.id)}" data-t="ราคาเดียว"><span class="tn">${esc(m.name)}</span><span class="pb num">${ps[0][1]}</span></button>`;
+    if(ps.length===1&&ps[0][0]==='ราคาเดียว')return `<div class="tile"><button class="tn" data-act="${m.sweet?'pick':'quick'}" data-id="${esc(m.id)}" data-t="ราคาเดียว">${esc(m.name)}</button><div class="pbs"><button class="pb" data-act="quick" data-id="${esc(m.id)}" data-t="ราคาเดียว" aria-label="${esc(m.name)} ${ps[0][1]} บาท"><b class="num">${ps[0][1]}</b></button></div></div>`;
     return `<div class="tile"><button class="tn" data-act="pick" data-id="${esc(m.id)}" aria-label="${esc(m.name)} เลือกความหวาน">${esc(m.name)}<span class="more" aria-hidden="true">⋯</span></button><div class="pbs">${ps.map(([k,v])=>`<button class="pb" data-act="quick" data-id="${esc(m.id)}" data-t="${k}" aria-label="${esc(m.name)} ${k} ${v} บาท"><span>${k}</span> <b class="num">${v}</b></button>`).join('')}</div></div>`;
   };
   let grid;

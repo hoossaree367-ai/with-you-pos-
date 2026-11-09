@@ -210,6 +210,15 @@ button{cursor:pointer;touch-action:manipulation;background:none;border:0;padding
 .tile.one:active{background:var(--raised)}
 .tile.out .pill{justify-self:start}
 @media (prefers-reduced-motion:reduce){.tile .pb{transition:none;transform:none!important}}
+/* Menu cards: the name is a lifted button too (opens options) */
+.tile{background:var(--surface)}
+.tile .tn{width:auto;margin:10px 10px 8px;padding:8px 10px;min-height:44px;border-radius:10px;background:var(--raised);border:1px solid var(--line);box-shadow:var(--lift-sm);color:var(--ink);transition:background .12s,box-shadow .12s,transform .06s}
+.tile .tn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--sky-ring),var(--lift-sm)}
+@media (hover:hover){.tile .tn:hover{background:var(--ground)}}
+.tile .tn:active,.tile .tn:hover:active{background:var(--leaf-soft);box-shadow:0 0 0 4px var(--sky-ring);transform:translateY(2px)}
+.tile .pbs{padding-top:0}
+.tile.out{background:var(--surface)}
+@media (prefers-reduced-motion:reduce){.tile .tn{transition:none;transform:none!important}}
 #print{display:none}
 @media print{@page{margin:0}
  html,body{height:auto;background:#fff;color:#000;padding:0}
